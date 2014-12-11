@@ -37,6 +37,7 @@ void ofApp::setup(){
     gui->addSpacer();
 
 	gui->addToggle("live", true);
+	gui->addToggle("write mesh", false);
 	gui->addToggle("record", false);
 	gui->addLabelButton("show point cloud", false);
 	
@@ -91,6 +92,7 @@ void ofApp::guiEvent(ofxUIEventArgs &e)
 	ofxUIToggle* live = (ofxUIToggle*)gui->getWidget("live");
 	ofxUIToggle* record = (ofxUIToggle*)gui->getWidget("record");
 	ofxUIIntSlider * frame = (ofxUIIntSlider *) gui->getWidget("frame");
+	ofxUIToggle* writeMesh = (ofxUIToggle*)gui->getWidget("write mesh");
 
 	if (name == "play")
 	{
@@ -170,7 +172,7 @@ void ofApp::guiEvent(ofxUIEventArgs &e)
 			if (queue_depth != nullptr) delete queue_depth;
 			queue_color = new lockFreeQueue<ofImage *>();
 			queue_depth = new lockFreeQueue<ofShortImage *>();
-			recorder.setup(prefix, queue_color, queue_depth);
+			recorder.setup(prefix, queue_color, queue_depth, device_->getMapper(), writeMesh->getValue());
 			frameNum = 0;
 		}
 		else
@@ -217,6 +219,9 @@ void ofApp::update(){
 		{
 			img_color->setFromPixels(depthProcessor.mapDepthToColor(color_.getPixelsRef(), depth_.getPixelsRef()));
 			img_depth->setFromPixels(depth_.getPixelsRef(depth_.getNear(), depth_.getFar()));
+
+			img_color->mirror(false, true);
+			img_depth->mirror(false, true);
 		}
 		if (record->getValue() && color_.isFrameNew() && depth_.isFrameNew())
 		{
@@ -228,7 +233,6 @@ void ofApp::update(){
 			++ frameNum;
 		}
 	}
-	
 	setParameter();
 }
 
@@ -346,7 +350,7 @@ void ofApp::setMesh()
 			int idx = i * depth_.getWidth() + j;
 			if (img_color->getColor(j, i) != ofColor(0))
 			{
-				mesh.addVertex(ofVec3f(v3d[idx].X, v3d[idx].Y, v3d[idx].Z));
+				mesh.addVertex(ofVec3f(v3d[idx].X, v3d[idx].Y, -v3d[idx].Z));
 				mesh.addColor(img_color->getColor(j, i));
 			}
 		}

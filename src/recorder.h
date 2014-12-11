@@ -2,6 +2,7 @@
 #define RECORDER_H
 
 #include "ofMain.h"
+#include "ofxKinect2.h"
 #include <set>
 
 template <typename T>
@@ -42,8 +43,9 @@ class ofxVideoDataWriterThread : public ofThread {
 public:
     ofxVideoDataWriterThread();
 //    void setup(ofFile *file, lockFreeQueue<ofPixels *> * q);
-    void setup(string filePath, lockFreeQueue<ofImage *> * qc, lockFreeQueue<ofShortImage *> * qd);
+    void setup(string filePath, lockFreeQueue<ofImage *> * qc, lockFreeQueue<ofShortImage *> * qd, ICoordinateMapper* _mapper, bool _writeMesh = false);
     void threadedFunction();
+	void saveMesh(string filename, ofImage &img_color, ofShortImage &img_depth);
     void signal();
     bool isWriting() { return bIsWriting; }
 	void close() { stopwriting = true; }
@@ -58,6 +60,8 @@ private:
     bool bIsWriting;
     bool bClose;
 	bool stopwriting;
+	bool writeMesh;
+	ICoordinateMapper* mapper;
 };
 
 
