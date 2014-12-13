@@ -31,16 +31,16 @@ void ofApp::setup(){
 	}
 	depthProcessor.init(512, 424, 1920, 1080, device_->getMapper());
 	//////////////////////////////////////////////////////////////////////////////
-	
+
 	gui = new ofxUICanvas();
 	gui->addLabel("Tools", OFX_UI_FONT_LARGE);
-    gui->addSpacer();
+	gui->addSpacer();
 
 	gui->addToggle("live", true);
 	gui->addToggle("write mesh", false);
 	gui->addToggle("record", false);
 	gui->addLabelButton("show point cloud", false);
-	
+
 	gui->addLabelButton("save sequence", false);
 	gui->addLabelButton("load sequence", false);
 	gui->addLabelButton("clear sequence", false);
@@ -52,7 +52,7 @@ void ofApp::setup(){
 	gui->addIntSlider("frame", 0, 0, 0);
 
 	gui->autoSizeToFitWidgets();
-    ofAddListener(gui->newGUIEvent,this,&ofApp::guiEvent);
+	ofAddListener(gui->newGUIEvent,this,&ofApp::guiEvent);
 
 	stop = true;
 
@@ -75,7 +75,7 @@ void ofApp::setup(){
 	}
 	img_color->reloadTexture();
 	img_depth->reloadTexture();
-	
+
 	glEnable(GL_POINT_SMOOTH); // use circular points instead of square points
 	//glPointSize(3); // make the points bigger
 
@@ -164,7 +164,7 @@ void ofApp::guiEvent(ofxUIEventArgs &e)
 	}
 	else if (name == "record")
 	{
-		
+
 		if (record->getValue())
 		{
 			cout << "aaaaaaaa\n";
@@ -172,7 +172,7 @@ void ofApp::guiEvent(ofxUIEventArgs &e)
 			if (queue_depth != nullptr) delete queue_depth;
 			queue_color = new lockFreeQueue<ofImage *>();
 			queue_depth = new lockFreeQueue<ofShortImage *>();
-			recorder.setup(prefix, queue_color, queue_depth, device_->getMapper(), writeMesh->getValue());
+			recorder.setup(prefix, queue_color, queue_depth, &depthProcessor, writeMesh->getValue());
 			frameNum = 0;
 		}
 		else
@@ -193,6 +193,8 @@ void ofApp::setFrame()
 	img_color->loadImage(frameName);
 	frameName = prefix + string("depth_") + itoa(frame->getValue(), x, 10) + string(".png");
 	img_depth->loadImage(frameName);
+	frameName = prefix + string("pointCloud_") + itoa(frame->getValue(), x, 10) + string(".ply");
+	recorder.loadMesh(frameName, mesh);
 }
 
 //--------------------------------------------------------------
@@ -219,6 +221,7 @@ void ofApp::update(){
 		{
 			img_color->setFromPixels(depthProcessor.mapDepthToColor(color_.getPixelsRef(), depth_.getPixelsRef()));
 			img_depth->setFromPixels(depth_.getPixelsRef(depth_.getNear(), depth_.getFar()));
+			//img_depth->setFromPixels(depth_.getPixelsRef());
 
 			img_color->mirror(false, true);
 			img_depth->mirror(false, true);
@@ -255,7 +258,7 @@ void ofApp::draw(){
 	mesh.draw();
 	ofDisableDepthTest();
 	cam.end();
-	
+
 }
 
 //--------------------------------------------------------------
@@ -310,7 +313,7 @@ void ofApp::exit()
 	img_depth->clear();
 	delete img_color;
 	delete img_depth;
-	
+
 	depthProcessor.clear();
 	device_->exit();
 	delete device_;

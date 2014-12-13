@@ -1,7 +1,7 @@
 #include "recorder.h"
 
 ofxVideoDataWriterThread::ofxVideoDataWriterThread(){};
-void ofxVideoDataWriterThread::setup(string filePath, lockFreeQueue<ofImage *> * qc, lockFreeQueue<ofShortImage *> * qd, ICoordinateMapper* _mapper, bool _writeMesh){
+void ofxVideoDataWriterThread::setup(string filePath, lockFreeQueue<ofImage *> * qc, lockFreeQueue<ofShortImage *> * qd, MapDepthToColor* _mapper, bool _writeMesh){
 	this->filePath = filePath;
 	queue_color = qc;
 	queue_depth = qd;
@@ -30,7 +30,7 @@ void ofxVideoDataWriterThread::threadedFunction(){
 			frame_depth->saveImage(frameName);
 			if (writeMesh)
 			{
-				frameName = filePath + string("pointCloud_") + itoa(number+1, x, 10);
+				frameName = filePath + string("pointCloud_") + itoa(number+1, x, 10) + string(".ply");
 				saveMesh(frameName, *frame_color, *frame_depth);
 			}
 			bIsWriting = false;
@@ -56,7 +56,7 @@ void ofxVideoDataWriterThread::threadedFunction(){
 		frame_depth->saveImage(frameName);
 		if (writeMesh)
 		{
-			frameName = filePath + string("pointCloud_") + itoa(number+1, x, 10);
+			frameName = filePath + string("pointCloud_") + itoa(number+1, x, 10) + string(".ply");
 			saveMesh(frameName, *frame_color, *frame_depth);
 		}
 		bIsWriting = false;
@@ -75,25 +75,74 @@ void ofxVideoDataWriterThread::saveMesh(string filename, ofImage &img_color, ofS
 
 	int pixelNum = img_depth.getPixelsRef().size();
 	CameraSpacePoint *v3d = new CameraSpacePoint[pixelNum];
-	mapper->MapDepthFrameToCameraSpace(pixelNum, img_depth.getPixels(), pixelNum, v3d);
+	mapper->m_pMapper->MapDepthFrameToCameraSpace(pixelNum, img_depth.getPixels(), pixelNum, v3d);
+
+	int vertexNum = 0;
+	for (int i = 0; i < img_depth.height; ++ i)
+	{
+		for (int j = 0; j < img_depth.width; ++ j)
+		{
+			/*if (img_color.getColor(j, i) != ofColor(0))
+				++ vertexNum;*/
+			int idx = i * img_depth.width + j;
+			//if (v3d[idx].X != -INFINITE && v3d[idx].Y != -INFINITE && v3d[idx].Z != -INFINITE)
+			if (v3d[idx].X + 1 != v3d[idx].X - 1 && img_color.getColor(j, i) != ofColor(0))
+				++ vertexNum;
+		}
+	}
+
+	fout << "ply\n";
+	fout << "format binary_little_endian 1.0\n";
+	fout << "element vertex " << vertexNum << "\n";
+	fout << "property float x\n" << "property float y\n" << "property float z\n";
+	fout << "end_header\n";
+
 	for (int i = 0; i < img_depth.height; ++ i)
 	{
 		for (int j = 0; j < img_depth.width; ++ j)
 		{
 			int idx = i * img_depth.width + j;
 			ofColor &color = img_color.getColor(j, i);
-			if (color != ofColor(0))
+			//if (v3d[idx].X != -INFINITE && v3d[idx].Y != -INFINITE && v3d[idx].Z != -INFINITE)
+			if (v3d[idx].X + 1 != v3d[idx].X - 1 && color != ofColor(0))
 			{
 				fout.write((char*)&v3d[idx].X, sizeof(float));
 				fout.write((char*)&v3d[idx].Y, sizeof(float));
+				v3d[idx].Z = -v3d[idx].Z;
 				fout.write((char*)&v3d[idx].Z, sizeof(float));
-				fout << color.r << color.g << color.b;
+				//fout << v3d[idx].X << ' ' << v3d[idx].Y << ' ' << v3d[idx].Z << endl;
 			}
 		}
 	}
 	delete[]v3d;
 
 	fout.close();
+}
+
+void ofxVideoDataWriterThread::loadMesh(string filename, ofMesh &mesh)
+{
+	ofFile fin(filename, ofFile::ReadOnly, true);
+	char x[100];
+	fin.getline(x, 100);
+	fin.getline(x, 100);
+	string tmp;
+	int vertexNum;
+	fin >> tmp >> tmp >> vertexNum;
+	fin.getline(x, 100);
+	fin.getline(x, 100);
+	fin.getline(x, 100);
+	fin.getline(x, 100);
+	fin.getline(x, 100);
+	mesh.clear();
+	mesh.setMode(ofPrimitiveMode::OF_PRIMITIVE_POINTS);
+	for (int i = 0; i < vertexNum; ++ i)
+	{
+		float x, y, z;
+		fin.read((char *) &x, sizeof(float));
+		fin.read((char *) &y, sizeof(float));
+		fin.read((char *) &z, sizeof(float));
+		mesh.addVertex(ofVec3f(x, y, z));
+	}
 }
 
 void ofxVideoDataWriterThread::signal(){
