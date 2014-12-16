@@ -56,6 +56,7 @@ public:
 	int roundClock;
 
 	int frameNum;
+	int loadFrame;
 	int lastFrameLength;
 
 	lockFreeQueue<ofImage *> * queue_color;

@@ -143,23 +143,24 @@ void ofApp::guiEvent(ofxUIEventArgs &e)
 	else if (name == "previous")
 	{
 		ofxUILabelButton * button = (ofxUILabelButton *) e.widget;
-		if (stop && frame->getValue() > frame->getMin() && button->getValue())
+		if (stop && loadFrame > frame->getMin() && button->getValue())
 		{
-			frame->setValue(frame->getValue() - 1);
+			-- loadFrame;
 			setFrame();
 		}
 	}
 	else if (name == "next")
 	{
 		ofxUILabelButton * button = (ofxUILabelButton *) e.widget;
-		if (stop && frame->getValue() < frame->getMax() && button->getValue())
+		if (stop && loadFrame < frame->getMax() && button->getValue())
 		{
-			frame->setValue(frame->getValue() + 1);
+			++ loadFrame;
 			setFrame();
 		}
 	}
 	else if (name == "frame" && !live->getValue() && frame->getValue() > 0)
 	{
+		loadFrame = frame->getValue();
 		setFrame();
 	}
 	else if (name == "record")
@@ -188,12 +189,13 @@ void ofApp::guiEvent(ofxUIEventArgs &e)
 void ofApp::setFrame()
 {
 	ofxUIIntSlider * frame = (ofxUIIntSlider *) gui->getWidget("frame");
+	frame->setValue(loadFrame);
 	char x[100];
-	string frameName = prefix + string("color_") + itoa(frame->getValue(), x, 10) + string(".png");
+	string frameName = prefix + string("color_") + itoa(loadFrame, x, 10) + string(".png");
 	img_color->loadImage(frameName);
-	frameName = prefix + string("depth_") + itoa(frame->getValue(), x, 10) + string(".png");
+	frameName = prefix + string("depth_") + itoa(loadFrame, x, 10) + string(".png");
 	img_depth->loadImage(frameName);
-	frameName = prefix + string("pointCloud_") + itoa(frame->getValue(), x, 10) + string(".ply");
+	frameName = prefix + string("pointCloud_") + itoa(loadFrame, x, 10) + string(".ply");
 	recorder.loadMesh(frameName, mesh);
 }
 
@@ -208,9 +210,10 @@ void ofApp::update(){
 
 	if (!stop)
 	{
-		if (frame->getValue() < frame->getMax())
+		if (loadFrame < frame->getMax())
 		{
-			frame->setValue(frame->getValue() + 1);
+			++ loadFrame;
+			setFrame();
 		}
 	}
 

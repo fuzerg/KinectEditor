@@ -121,6 +121,7 @@ void ofxVideoDataWriterThread::saveMesh(string filename, ofImage &img_color, ofS
 
 void ofxVideoDataWriterThread::loadMesh(string filename, ofMesh &mesh)
 {
+	if (!writeMesh) return;
 	ofFile fin(filename, ofFile::ReadOnly, true);
 	char x[100];
 	fin.getline(x, 100);
