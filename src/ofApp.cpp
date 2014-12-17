@@ -62,6 +62,7 @@ void ofApp::setup(){
 	prefix.assign("frames/");
 	img.loadImage("linzer.png");
 	img_color = new ofImage();
+	img_originColor = new ofImage();
 	img_depth = new ofShortImage();
 	img_color->allocate(img.getWidth(), img.getHeight(), OF_IMAGE_COLOR);
 	img_depth->allocate(img.getWidth(), img.getHeight(), OF_IMAGE_GRAYSCALE);
@@ -81,7 +82,7 @@ void ofApp::setup(){
 
 	queue_color = nullptr;
 	queue_depth = nullptr;
-
+	queue_originColor = nullptr;
 }
 
 void ofApp::guiEvent(ofxUIEventArgs &e)
@@ -169,11 +170,10 @@ void ofApp::guiEvent(ofxUIEventArgs &e)
 		if (record->getValue())
 		{
 			cout << "aaaaaaaa\n";
-			if (queue_color != nullptr) delete queue_color;
-			if (queue_depth != nullptr) delete queue_depth;
 			queue_color = new lockFreeQueue<ofImage *>();
 			queue_depth = new lockFreeQueue<ofShortImage *>();
-			recorder.setup(prefix, queue_color, queue_depth, &depthProcessor, writeMesh->getValue());
+			queue_originColor = new lockFreeQueue<ofImage *>();
+			recorder.setup(prefix, queue_color, queue_depth, queue_originColor, &depthProcessor, writeMesh->getValue());
 			frameNum = 0;
 		}
 		else
@@ -222,18 +222,22 @@ void ofApp::update(){
 	{
 		if (color_.isFrameNew() && depth_.isFrameNew())
 		{
+			img_originColor->setFromPixels(color_.getPixelsRef());
 			img_color->setFromPixels(depthProcessor.mapDepthToColor(color_.getPixelsRef(), depth_.getPixelsRef()));
-			img_depth->setFromPixels(depth_.getPixelsRef(depth_.getNear(), depth_.getFar()));
-			//img_depth->setFromPixels(depth_.getPixelsRef());
+			//img_depth->setFromPixels(depth_.getPixelsRef(depth_.getNear(), depth_.getFar()));
+			img_depth->setFromPixels(depth_.getPixelsRef());
 
 			img_color->mirror(false, true);
 			img_depth->mirror(false, true);
+			img_originColor->mirror(false, true);
 		}
 		if (record->getValue() && color_.isFrameNew() && depth_.isFrameNew())
 		{
+			queue_originColor->Produce(img_originColor);
 			queue_color->Produce(img_color);
 			queue_depth->Produce(img_depth);
 			recorder.signal();
+			img_originColor = new ofImage(*img_originColor);
 			img_color = new ofImage(*img_color);
 			img_depth = new ofShortImage(*img_depth);
 			++ frameNum;
@@ -251,7 +255,10 @@ void ofApp::draw(){
 	ofPopStyle();
 
 	img_color->draw(imgPosX, imgPosY, imgViewerWidth, imgViewerHeight);
-	img_depth->draw(imgPosX, imgPosY + imgViewerHeight + margin, imgViewerWidth, imgViewerHeight);
+	ofShortPixels showDepth;
+	ofxKinect2::depthRemapToRange(img_depth->getPixelsRef(), showDepth, depth_.getNear(), depth_.getFar(), false);
+	img_showDepth.setFromPixels(showDepth);
+	img_showDepth.draw(imgPosX, imgPosY + imgViewerHeight + margin, imgViewerWidth, imgViewerHeight);
 
 	cam.begin(pointcloud);
 	ofEnableDepthTest();
@@ -314,8 +321,10 @@ void ofApp::exit()
 {
 	img_color->clear();
 	img_depth->clear();
+	img_originColor->clear();
 	delete img_color;
 	delete img_depth;
+	delete img_originColor;
 
 	depthProcessor.clear();
 	device_->exit();

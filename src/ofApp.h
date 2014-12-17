@@ -5,6 +5,7 @@
 #include "ofxUI.h"
 #include "recorder.h"
 #include "mapDepthToColor.h"
+#include "utils\DepthRemapToRange.h"
 
 class ofApp : public ofBaseApp{
 
@@ -45,8 +46,8 @@ public:
 	ofEasyCam cam;
 	ofMesh mesh;
 	ofImage img;
-	ofImage *img_color, mappedColor;
-	ofShortImage *img_depth;
+	ofImage *img_color, *img_originColor;
+	ofShortImage *img_depth, img_showDepth;
 
 	ofxKinect2::Device* device_;
 	ofxKinect2::IrStream ir_;
@@ -59,7 +60,7 @@ public:
 	int loadFrame;
 	int lastFrameLength;
 
-	lockFreeQueue<ofImage *> * queue_color;
+	lockFreeQueue<ofImage *> * queue_color, *queue_originColor;
 	lockFreeQueue<ofShortImage *> * queue_depth;
 	ofxVideoDataWriterThread recorder;
 	string prefix;

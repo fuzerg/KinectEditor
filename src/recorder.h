@@ -44,7 +44,7 @@ class ofxVideoDataWriterThread : public ofThread {
 public:
     ofxVideoDataWriterThread();
 //    void setup(ofFile *file, lockFreeQueue<ofPixels *> * q);
-    void setup(string filePath, lockFreeQueue<ofImage *> * qc, lockFreeQueue<ofShortImage *> * qd, MapDepthToColor* _mapper, bool _writeMesh = false);
+    void setup(string filePath, lockFreeQueue<ofImage *> * qc, lockFreeQueue<ofShortImage *> * qd, lockFreeQueue<ofImage *> * qoc, MapDepthToColor* _mapper, bool _writeMesh = false);
     void threadedFunction();
 	void saveMesh(string filename, ofImage &img_color, ofShortImage &img_depth);
 	void loadMesh(string filename, ofMesh &mesh);
@@ -57,7 +57,7 @@ private:
     Poco::Condition condition;
     string filePath;
     int number;
-    lockFreeQueue<ofImage *> * queue_color;
+    lockFreeQueue<ofImage *> * queue_color, * queue_originColor;
 	lockFreeQueue<ofShortImage *> * queue_depth;
     bool bIsWriting;
     bool bClose;

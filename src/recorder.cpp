@@ -1,10 +1,11 @@
 #include "recorder.h"
 
 ofxVideoDataWriterThread::ofxVideoDataWriterThread(){};
-void ofxVideoDataWriterThread::setup(string filePath, lockFreeQueue<ofImage *> * qc, lockFreeQueue<ofShortImage *> * qd, MapDepthToColor* _mapper, bool _writeMesh){
+void ofxVideoDataWriterThread::setup(string filePath, lockFreeQueue<ofImage *> * qc, lockFreeQueue<ofShortImage *> * qd, lockFreeQueue<ofImage *> * qoc, MapDepthToColor* _mapper, bool _writeMesh){
 	this->filePath = filePath;
 	queue_color = qc;
 	queue_depth = qd;
+	queue_originColor = qoc;
 	bIsWriting = false;
 	bClose = false;
 	number = 0;
@@ -20,14 +21,18 @@ void ofxVideoDataWriterThread::threadedFunction(){
 	{
 		ofShortImage * frame_depth = NULL;
 		ofImage * frame_color = NULL;
+		ofImage * frame_color_origin = NULL;
 		if(queue_depth->Consume(frame_depth)){
 			queue_color->Consume(frame_color);
+			queue_originColor->Consume(frame_color_origin);
 			bIsWriting = true;
 			char x[100];
 			string frameName = filePath + string("color_") + itoa(number+1, x, 10) + string(".png");
 			frame_color->saveImage(frameName);
 			frameName = filePath + string("depth_") + itoa(number+1, x, 10) + string(".png");
 			frame_depth->saveImage(frameName);
+			frameName = filePath + string("color_origin_") + itoa(number+1, x, 10) + string(".png");
+			frame_color_origin->saveImage(frameName);
 			if (writeMesh)
 			{
 				frameName = filePath + string("pointCloud_") + itoa(number+1, x, 10) + string(".ply");
@@ -36,6 +41,7 @@ void ofxVideoDataWriterThread::threadedFunction(){
 			bIsWriting = false;
 			delete frame_depth;
 			delete frame_color;
+			delete frame_color_origin;
 			++ number;
 			//cout << queue_depth->size() << endl;
 			//cout << number << endl;
@@ -46,14 +52,18 @@ void ofxVideoDataWriterThread::threadedFunction(){
 	}
 	ofShortImage * frame_depth = NULL;
 	ofImage * frame_color = NULL;
+	ofImage * frame_color_origin = NULL;
 	while (queue_depth->Consume(frame_depth)){
 		queue_color->Consume(frame_color);
+		queue_originColor->Consume(frame_color_origin);
 		bIsWriting = true;
 		char x[100];
 		string frameName = filePath + string("color_") + itoa(number+1, x, 10) + string(".png");
 		frame_color->saveImage(frameName);
 		frameName = filePath + string("depth_") + itoa(number+1, x, 10) + string(".png");
 		frame_depth->saveImage(frameName);
+		frameName = filePath + string("color_origin_") + itoa(number+1, x, 10) + string(".png");
+		frame_color_origin->saveImage(frameName);
 		if (writeMesh)
 		{
 			frameName = filePath + string("pointCloud_") + itoa(number+1, x, 10) + string(".ply");
@@ -62,10 +72,14 @@ void ofxVideoDataWriterThread::threadedFunction(){
 		bIsWriting = false;
 		delete frame_depth;
 		delete frame_color;
+		delete frame_color_origin;
 		++ number;
 		//cout << queue_depth->size() << endl;
 		//cout << number << endl;
 	}
+	delete queue_color;
+	delete queue_depth;
+	delete queue_originColor;
 }
 
 void ofxVideoDataWriterThread::saveMesh(string filename, ofImage &img_color, ofShortImage &img_depth)
